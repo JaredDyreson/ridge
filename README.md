@@ -1,2 +1,2 @@
 # ridge
-A small two dimension matrix ADT library written in Rust
+A small two dimension matrix ADT written in Rust

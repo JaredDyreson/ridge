@@ -32,22 +32,27 @@ impl<T: Debug + Default + Clone + serde::ser::Serialize> Matrix<T> {
         }
     }
 
-    /// Insert an element into the matrix at (x, y)
-    /// and send an error result if the conte
-    pub fn add(&mut self, x: usize, y: usize, value: Option<T>) -> Result<(), BoundError> {
+    /// Obtain a mutable reference to a cell at (x, y)
+    fn get_mut(&mut self, x: usize, y: usize) -> Result<&mut Option<T>, BoundError> {
         if x > self.x_dim || y > self.y_dim {
             return Err(BoundError::Exceed(x, y));
         }
 
         // It is safe to just unwrap here, we checked the bounds above
-        *self.content.get_mut(x).unwrap().get_mut(y).unwrap() = value;
+        Ok(self.content.get_mut(x).unwrap().get_mut(y).unwrap())
+    }
+
+    /// Insert an element into the matrix at (x, y)
+    /// and send an error result if the conte
+    pub fn add(&mut self, x: usize, y: usize, value: Option<T>) -> Result<(), BoundError> {
+        *self.get_mut(x, y)? = value;
         Ok(())
     }
 
     /// Override an element from the matrix at (x, y)
     /// and insert the default value to take it's place
-    pub fn remove(&mut self, x: usize, y: usize) -> Result<(), BoundError> {
-        Ok(self.add(x, y, None)?)
+    pub fn remove(&mut self, x: usize, y: usize) -> Result<Option<T>, BoundError> {
+        Ok(std::mem::replace(&mut *self.get_mut(x, y)?, None))
     }
 
     /// Get an immutable reference to an element at (x, y)
@@ -129,19 +134,23 @@ mod test {
         let (x_dim, y_dim) = (8, 10);
         let mut matrix = Matrix::<usize>::new(x_dim, y_dim);
         matrix.add(0, 0, Some(10)).unwrap();
-        matrix.remove(0, 0).unwrap();
+        // When we remove a value, we should get the content of `T`
+        // wrapped in an option type
+        assert_eq!(matrix.remove(0, 0).unwrap(), Some(10));
         assert_eq!(*matrix.get(0, 0).unwrap(), None);
+        // Expected behavior, we should be able to safely remove
+        // an index and not panic
+        assert_eq!(matrix.remove(0, 0).unwrap(), None);
     }
 
     #[test]
     fn test_serializer() {
         let matrix = Matrix::<usize>::new(8_usize, 10_usize);
         let content = serde_json::to_string(&matrix).unwrap();
-        //println!("Serialized content: {content}");
-        let _deserialized_matrix = serde_json::from_str::<Matrix<usize>>(&content).unwrap();
-        assert_eq!(matrix.x_dim, _deserialized_matrix.x_dim);
-        assert_eq!(matrix.y_dim, _deserialized_matrix.y_dim);
-        assert_eq!(matrix.content, _deserialized_matrix.content);
+        let deserialized_matrix = serde_json::from_str::<Matrix<usize>>(&content).unwrap();
+        assert_eq!(matrix.x_dim, deserialized_matrix.x_dim);
+        assert_eq!(matrix.y_dim, deserialized_matrix.y_dim);
+        assert_eq!(matrix.content, deserialized_matrix.content);
     }
 
     #[test]

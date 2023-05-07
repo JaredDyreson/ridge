@@ -12,8 +12,19 @@ where
 }
 
 impl<T: Debug + Default + Clone + serde::ser::Serialize> Matrix<T> {
-    /// Constructor for the matrix ADT
+    /// Constructor that initalizes the matrix with `None`
+    /// instead of the default value of `T`
     pub fn new(x_dim: usize, y_dim: usize) -> Self {
+        Self {
+            content: vec![vec![None; x_dim]; y_dim],
+            x_dim,
+            y_dim,
+        }
+    }
+
+    /// Constructor that uses the `Default` trait
+    /// for each cell in the matrix
+    pub fn default(x_dim: usize, y_dim: usize) -> Self {
         Self {
             content: vec![vec![Some(T::default()); x_dim]; y_dim],
             x_dim,
@@ -146,14 +157,20 @@ mod test {
         for y in 0..matrix.y_dim {
             matrix.add(y, 0, Some(1)).unwrap();
         }
+
         println!("{:?}", matrix.content);
 
-        for (lhs, rhs) in matrix.col(0).unwrap().iter().zip([1, 1, 1]) {
-            assert_eq!(**lhs, Some(rhs));
+        for (lhs, rhs) in matrix
+            .col(0)
+            .unwrap()
+            .iter()
+            .zip([Some(1), Some(1), Some(1)])
+        {
+            assert_eq!(**lhs, rhs);
         }
 
-        for (lhs, rhs) in matrix.row(0).unwrap().iter().zip([1, 0, 0]) {
-            assert_eq!(**lhs, Some(rhs));
+        for (lhs, rhs) in matrix.row(0).unwrap().iter().zip([Some(1), None, None]) {
+            assert_eq!(**lhs, rhs);
         }
     }
 }
